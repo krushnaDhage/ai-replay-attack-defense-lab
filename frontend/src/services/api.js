@@ -43,6 +43,7 @@ export const transactionAPI = {
 export const simulatorAPI = {
   capture: (data) => api.post('/attack-simulator/capture', data),
   replay: () => api.post('/attack-simulator/replay'),
+  replayAdaptive: () => api.post('/attack-simulator/replay-adaptive'),
   getSimulations: () => api.get('/attack-simulator/simulations'),
 }
 

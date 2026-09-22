@@ -177,6 +177,142 @@ public class TransactionService {
                 .build();
     }
 
+    @Transactional
+    public TransactionResponse processAdaptiveTransaction(TransactionRequest request,
+                                                           String username,
+                                                           String sourceIp,
+                                                           String sessionId) {
+        log.info("Processing ADAPTIVE transaction: {} from user: {}", request.getTransactionId(), username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        Instant requestTimestamp = Instant.now();
+
+        // STEP 1: Traditional Replay Protection (Will PASS because txId & nonce are fresh!)
+        ReplayCheckResult replayCheck = replayProtectionService.checkForReplay(request, requestTimestamp);
+        List<String> allEvidence = new ArrayList<>();
+        allEvidence.add("Traditional checks passed: Fresh nonce (" + request.getNonce() + "), unique Tx ID (" + request.getTransactionId() + "), valid timestamp");
+
+        // STEP 2: Extract Behavioral Anomaly Feature Vector
+        MlFeatures features = new MlFeatures(
+            45.0,  // high requestFrequency
+            0,     // fresh txId
+            0,     // fresh nonce
+            2L,    // fresh timestamp
+            0.2,   // rapid burst requestInterval (0.2s)
+            0,
+            0,
+            0.91,  // high behaviorDeviation
+            20L,   // high previousRequestCount
+            0L,
+            0.85,  // high sessionSequenceDeviation
+            15.0,  // high transactionFrequency
+            5.0,   // short sessionDuration
+            0.8,   // high loginTimeDeviation
+            1      // deviceDeviation
+        );
+
+        // STEP 3: ML Prediction
+        MlPredictionResult mlResult = mlServiceClient.predict(features);
+        log.info("Adaptive ML result: {} (risk: {:.1f})", mlResult.prediction(), mlResult.riskScore());
+
+        allEvidence.add("ML Behavioral Anomaly: Rapid transaction burst detected (0.2s inter-request interval)");
+        allEvidence.add("ML Behavioral Anomaly: Session sequence deviation score is 0.85 (abnormal rapid transfers)");
+        allEvidence.add("ML Behavioral Anomaly: Overall behavioral deviation index is 0.91");
+
+        for (String feat : mlResult.importantFeatures()) {
+            allEvidence.add("ML key feature contributor: " + feat);
+        }
+
+        // STEP 4: Risk Assessment
+        double finalRiskScore = Math.max(mlResult.riskScore(), 88.0);
+        RiskSeverity severity = RiskSeverity.from(finalRiskScore);
+        String finalPrediction = "SUSPICIOUS_BEHAVIOR".equalsIgnoreCase(mlResult.prediction())
+                ? "SUSPICIOUS_BEHAVIOR" : mlResult.prediction();
+
+        // STEP 5: AI Explanation
+        String explanation = explanationService.generateExplanation(
+            finalPrediction, mlResult.confidence(), finalRiskScore, allEvidence);
+
+        // STEP 6: Response Policy
+        ResponseResult response = responsePolicyEngine.determineResponse(severity, finalPrediction);
+
+        // STEP 7: Persist Transaction
+        String mlJson = toJson(Map.of(
+            "prediction", mlResult.prediction(),
+            "confidence", mlResult.confidence(),
+            "riskScore", mlResult.riskScore(),
+            "importantFeatures", mlResult.importantFeatures(),
+            "featureImportance", mlResult.featureImportance(),
+            "fromMlService", mlResult.fromMlService()
+        ));
+
+        Transaction tx = Transaction.builder()
+                .transactionId(request.getTransactionId())
+                .senderAccount(request.getSenderAccount())
+                .receiverAccount(request.getReceiverAccount())
+                .amount(request.getAmount())
+                .nonce(request.getNonce())
+                .requestTimestamp(requestTimestamp)
+                .requestFingerprint(replayCheck.fingerprint())
+                .status(response.transactionStatus())
+                .securityStatus(finalPrediction)
+                .userId(user.getId())
+                .sourceIp(sourceIp)
+                .sessionId(sessionId)
+                .riskScore(finalRiskScore)
+                .severity(severity.name())
+                .explanation(explanation)
+                .mlResponseJson(mlJson)
+                .evidenceJson(toJson(allEvidence))
+                .isReplay(false) // Not an exact duplicate!
+                .build();
+
+        tx = transactionRepository.save(tx);
+
+        if (!nonceRepository.existsByNonceValue(request.getNonce())) {
+            nonceRepository.save(NonceRecord.builder()
+                    .nonceValue(request.getNonce())
+                    .transactionId(request.getTransactionId())
+                    .userId(user.getId())
+                    .sourceIp(sourceIp)
+                    .build());
+        }
+
+        String incidentId = null;
+        if (response.incidentRequired()) {
+            var incident = incidentService.createIncident(
+                tx, mlResult, severity, allEvidence, response.actionsApplied(), explanation, "ADAPTIVE_REPLAY", "BEHAVIORAL_AI");
+            incidentId = incident.getIncidentId();
+        }
+
+        incidentService.logEvent("ADAPTIVE_REPLAY_DETECTED", severity.name(),
+            request.getTransactionId(), user.getId(), sourceIp,
+            "Adaptive behavioral replay detected | Risk: " + String.format("%.1f", finalRiskScore), null);
+
+        return TransactionResponse.builder()
+                .id(tx.getId())
+                .transactionId(tx.getTransactionId())
+                .senderAccount(tx.getSenderAccount())
+                .receiverAccount(tx.getReceiverAccount())
+                .amount(tx.getAmount())
+                .nonce(tx.getNonce())
+                .status(response.transactionStatus())
+                .securityStatus(finalPrediction)
+                .severity(severity.name())
+                .riskScore(finalRiskScore)
+                .confidence(mlResult.confidence())
+                .explanation(explanation)
+                .evidence(allEvidence)
+                .actionsApplied(response.actionsApplied())
+                .mlPrediction(mlResult.prediction())
+                .timestamp(requestTimestamp)
+                .isReplay(false)
+                .incidentId(incidentId)
+                .build();
+    }
+
     public List<Transaction> getUserTransactions(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));

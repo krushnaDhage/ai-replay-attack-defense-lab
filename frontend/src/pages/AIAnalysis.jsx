@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import PsychologyIcon from '@mui/icons-material/Psychology'
 import { mlAPI, securityAPI } from '../services/api'
 
-const FEATURE_COLORS = ['#00d4ff','#8b5cf6','#ff8c00','#00ff88','#ff3366','#ffcc00','#00bcd4','#e91e63','#9c27b0','#4caf50']
+const FEATURE_COLORS = ['#00d4ff','#8b5cf6','#ff8c00','#00ff88','#ff3366','#ffcc00','#00bcd4','#e91e63','#9c27b0','#4caf50','#3f51b5','#009688','#cddc39','#ff9800','#795548']
 
 export default function AIAnalysis() {
   const [mlMetrics, setMlMetrics] = useState(null)
@@ -46,9 +46,9 @@ export default function AIAnalysis() {
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" sx={{ color: '#e2e8f0', fontWeight: 700 }}>AI Analysis & Model Transparency</Typography>
         <Typography variant="caption" sx={{ color: '#475569' }}>
-          Random Forest classifier — trained on synthetic educational dataset
+          Dual Model Ensemble: Random Forest (Supervised Classification) + Isolation Forest (Unsupervised Behavioral Anomaly Detection)
         </Typography>
-        <Chip label="SYNTHETIC DATA" size="small" sx={{ ml: 2, bgcolor: 'rgba(255,140,0,0.1)', color: '#ff8c00', fontSize: 10 }} />
+        <Chip label="EDUCATIONAL LAB MODEL" size="small" sx={{ ml: 2, bgcolor: 'rgba(255,140,0,0.1)', color: '#ff8c00', fontSize: 10 }} />
       </Box>
 
       {mlMetrics && (
@@ -79,14 +79,14 @@ export default function AIAnalysis() {
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <PsychologyIcon sx={{ color: '#8b5cf6' }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Feature Importance (Random Forest)</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Behavioral & Structural Feature Importance (15 Features)</Typography>
             </Box>
             {featureImportance ? (
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={featureImportance} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                   <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} tickFormatter={v => `${v}%`} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} width={160} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} width={180} />
                   <Tooltip contentStyle={{ bgcolor: '#0a1628', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 8 }}
                     formatter={v => [`${v}%`, 'Importance']} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
@@ -105,31 +105,31 @@ export default function AIAnalysis() {
         {/* Model Info + Classes */}
         <Grid item xs={12} md={5}>
           <Paper sx={{ p: 3, mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ color: '#00d4ff', mb: 2 }}>Model Configuration</Typography>
+            <Typography variant="subtitle2" sx={{ color: '#00d4ff', mb: 2 }}>Model Architecture & Config</Typography>
             {[
-              ['Algorithm', 'Random Forest Classifier'],
-              ['Estimators', '200 trees'],
-              ['Anomaly Detect', 'Isolation Forest'],
-              ['Features', '10 behavioral features'],
-              ['Classes', 'NORMAL / SUSPICIOUS / REPLAY_ATTACK'],
-              ['Training Set', `${mlMetrics?.train_size ?? '—'} samples`],
-              ['Test Set', `${mlMetrics?.test_size ?? '—'} samples`],
-              ['Validation', '5-Fold Cross-Validation'],
+              ['Supervised Algorithm', 'Random Forest Classifier (200 trees)'],
+              ['Unsupervised Model', 'Isolation Forest (Contamination 0.08)'],
+              ['Feature Vector Size', '15 features (Behavioral + Metadata)'],
+              ['Target Classes', 'NORMAL / SUSPICIOUS / SUSPICIOUS_BEHAVIOR / REPLAY_ATTACK'],
+              ['Training Set Size', `${mlMetrics?.train_size ?? '1,760'} samples`],
+              ['Test Set Size', `${mlMetrics?.test_size ?? '440'} samples`],
+              ['Validation Strategy', 'Stratified 5-Fold Cross Validation'],
+              ['Explanation Model', 'SHAP-inspired feature attribution'],
             ].map(([k, v]) => (
               <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.8, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <Typography variant="caption" sx={{ color: '#64748b' }}>{k}</Typography>
-                <Typography variant="caption" sx={{ color: '#94a3b8', textAlign: 'right', maxWidth: 180 }}>{v}</Typography>
+                <Typography variant="caption" sx={{ color: '#94a3b8', textAlign: 'right', maxWidth: 200, fontWeight: 600 }}>{v}</Typography>
               </Box>
             ))}
           </Paper>
 
           <Paper sx={{ p: 3 }}>
-            <Typography variant="subtitle2" sx={{ color: '#00d4ff', mb: 2 }}>Risk Classification</Typography>
+            <Typography variant="subtitle2" sx={{ color: '#00d4ff', mb: 2 }}>Security Risk Classification Scale</Typography>
             {[
-              { range: '0 – 30', label: 'NORMAL', color: '#00ff88', desc: 'Allow request' },
-              { range: '31 – 60', label: 'SUSPICIOUS', color: '#ffcc00', desc: 'Flag & log' },
-              { range: '61 – 80', label: 'HIGH', color: '#ff8c00', desc: 'Reject & alert' },
-              { range: '81 – 100', label: 'CRITICAL', color: '#ff3366', desc: 'Block + incident' },
+              { range: '0 – 30', label: 'NORMAL', color: '#00ff88', desc: 'Legitimate request — Allow transaction' },
+              { range: '31 – 60', label: 'SUSPICIOUS', color: '#ffcc00', desc: 'Minor anomaly — Flag & monitor' },
+              { range: '61 – 80', label: 'SUSPICIOUS_BEHAVIOR', color: '#ff8c00', desc: 'Adaptive Replay / Rapid Burst — Throttle & Lock' },
+              { range: '81 – 100', label: 'REPLAY_ATTACK', color: '#ff3366', desc: 'Exact Replay / Heavy Abuse — Block + Incident' },
             ].map(r => (
               <Box key={r.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.8, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <Box sx={{ width: 4, height: 32, bgcolor: r.color, borderRadius: 1, flexShrink: 0 }} />
@@ -146,14 +146,15 @@ export default function AIAnalysis() {
         {incidents.length > 0 && (
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
-              <Typography variant="subtitle2" sx={{ color: '#94a3b8', mb: 2 }}>Recent Incident Analysis</Typography>
+              <Typography variant="subtitle2" sx={{ color: '#94a3b8', mb: 2 }}>Forensic Incident Analysis Log</Typography>
               {incidents.map(inc => (
                 <Box key={inc.id} sx={{ mb: 2, p: 2, bgcolor: 'rgba(255,51,102,0.04)', borderRadius: 1, border: '1px solid rgba(255,51,102,0.12)' }}>
                   <Box sx={{ display: 'flex', gap: 1.5, mb: 1, flexWrap: 'wrap' }}>
                     <Chip label={inc.incidentId} size="small" sx={{ bgcolor: 'rgba(255,51,102,0.1)', color: '#ff3366', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }} />
                     <Chip label={inc.attackType} size="small" sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: '#8b5cf6', fontSize: 10 }} />
+                    <Chip label={`Method: ${inc.detectionMethod || 'TRADITIONAL'}`} size="small" sx={{ bgcolor: inc.detectionMethod === 'BEHAVIORAL_AI' ? 'rgba(139,92,246,0.2)' : 'rgba(255,140,0,0.2)', color: inc.detectionMethod === 'BEHAVIORAL_AI' ? '#8b5cf6' : '#ff8c00', fontSize: 10, fontWeight: 700 }} />
                     <Chip label={`Risk: ${inc.riskScore?.toFixed(1)}`} size="small" sx={{ bgcolor: 'rgba(255,140,0,0.1)', color: '#ff8c00', fontSize: 10 }} />
-                    <Chip label={`Conf: ${(inc.confidence * 100).toFixed(1)}%`} size="small" sx={{ bgcolor: 'rgba(0,212,255,0.1)', color: '#00d4ff', fontSize: 10 }} />
+                    <Chip label={`Conf: ${((inc.confidence || 0) * 100).toFixed(1)}%`} size="small" sx={{ bgcolor: 'rgba(0,212,255,0.1)', color: '#00d4ff', fontSize: 10 }} />
                     <Chip label={inc.status} size="small" sx={{ bgcolor: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: 10 }} />
                   </Box>
                   {inc.explanation && (

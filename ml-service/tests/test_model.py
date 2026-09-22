@@ -38,6 +38,24 @@ REPLAY_FEATURES = {
     "duplicateRequestCount": 10
 }
 
+ADAPTIVE_REPLAY_FEATURES = {
+    "requestFrequency": 40.0,
+    "transactionIdReuse": 0,
+    "nonceReuse": 0,
+    "timestampAge": 5.0,
+    "requestInterval": 0.2,
+    "ipChanged": 0,
+    "sessionChanged": 0,
+    "behaviorDeviation": 0.91,
+    "previousRequestCount": 20,
+    "duplicateRequestCount": 0,
+    "sessionSequenceDeviation": 0.85,
+    "transactionFrequency": 15.0,
+    "sessionDuration": 5.0,
+    "loginTimeDeviation": 0.8,
+    "deviceDeviation": 1
+}
+
 
 class TestFallbackPredict:
     """Tests for the rule-based fallback (no model file needed)."""
@@ -120,8 +138,8 @@ class TestTraining:
         import tempfile, os
         from data.generate_dataset import generate_dataset
         df = generate_dataset()
-        assert len(df) == 2000
-        assert set(df["label"].unique()) == {"NORMAL", "SUSPICIOUS", "REPLAY_ATTACK"}
+        assert len(df) == 2200
+        assert set(df["label"].unique()) == {"NORMAL", "SUSPICIOUS", "SUSPICIOUS_BEHAVIOR", "REPLAY_ATTACK"}
         assert "nonceReuse" in df.columns
 
     def test_replay_class_has_nonce_reuse(self):

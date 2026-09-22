@@ -8,7 +8,6 @@ import java.util.List;
  * Deterministic AI explanation generator.
  * Produces human-readable explanations from structured evidence.
  * Works without any external LLM — no API keys required.
- * An LLM can be wired in via environment variable in future.
  */
 @Service
 public class ExplanationService {
@@ -24,16 +23,27 @@ public class ExplanationService {
         StringBuilder sb = new StringBuilder();
 
         switch (prediction) {
-            case "REPLAY_ATTACK" -> {
+            case "ADAPTIVE_REPLAY", "SUSPICIOUS_BEHAVIOR" -> {
                 sb.append(String.format(
-                    "HIGH PROBABILITY REPLAY ATTACK DETECTED (confidence: %.1f%%, risk score: %.1f/100). ",
+                    "BEHAVIORAL ANOMALY DETECTED (ML confidence: %.1f%%, overall security risk score: %.1f/100). ",
+                    confidence * 100, riskScore));
+                sb.append("Traditional replay checks did not identify an exact duplicate because the transaction ID and nonce are new. ");
+                sb.append("However, behavioral ML detected anomalous session activity: ");
+                for (int i = 0; i < evidence.size(); i++) {
+                    sb.append((i + 1)).append(") ").append(evidence.get(i)).append(". ");
+                }
+                sb.append("The system has automatically enforced policy: request blocked, session restricted, and security incident logged.");
+            }
+            case "REPLAY_ATTACK", "EXACT_REPLAY" -> {
+                sb.append(String.format(
+                    "EXACT REPLAY ATTACK DETECTED (confidence: %.1f%%, risk score: %.1f/100). ",
                     confidence * 100, riskScore));
                 sb.append("The following security violations were identified: ");
                 for (int i = 0; i < evidence.size(); i++) {
                     sb.append((i + 1)).append(") ").append(evidence.get(i)).append(". ");
                 }
                 sb.append("The system has automatically blocked this request and created a security incident. ");
-                sb.append("A replay attack occurs when an adversary intercepts a legitimate request and retransmits it to fraudulently repeat an operation.");
+                sb.append("Note: Traditional cryptographic/freshness checks are sufficient to block basic duplicates.");
             }
             case "SUSPICIOUS" -> {
                 sb.append(String.format(
@@ -41,7 +51,7 @@ public class ExplanationService {
                     confidence * 100, riskScore));
                 sb.append("The following anomalies were observed: ");
                 for (String e : evidence) sb.append(e).append(". ");
-                sb.append("The request has been flagged for review but allowed through pending investigation.");
+                sb.append("The request has been flagged for monitoring.");
             }
             default -> {
                 sb.append(String.format(

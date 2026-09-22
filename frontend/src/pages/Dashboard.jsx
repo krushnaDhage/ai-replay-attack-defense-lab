@@ -120,11 +120,11 @@ export default function Dashboard() {
       {/* Metric Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={6} sm={4} md={2}><StatCard title="Total Requests" value={metrics?.totalRequests ?? 0} icon={<ApiIcon sx={{ color: '#00d4ff' }} />} color="#00d4ff" /></Grid>
-        <Grid item xs={6} sm={4} md={2}><StatCard title="Analyzed" value={metrics?.requestsAnalyzed ?? 0} icon={<PsychologyIcon sx={{ color: '#8b5cf6' }} />} color="#8b5cf6" /></Grid>
-        <Grid item xs={6} sm={4} md={2}><StatCard title="Suspicious" value={metrics?.suspiciousRequests ?? 0} icon={<WarningIcon sx={{ color: '#ff8c00' }} />} color="#ff8c00" /></Grid>
-        <Grid item xs={6} sm={4} md={2}><StatCard title="Replay Attacks" value={metrics?.replayAttacksDetected ?? 0} icon={<BugReportIcon sx={{ color: '#ff3366' }} />} color="#ff3366" /></Grid>
-        <Grid item xs={6} sm={4} md={2}><StatCard title="Blocked" value={metrics?.attacksBlocked ?? 0} icon={<BlockIcon sx={{ color: '#ff3366' }} />} color="#ff3366" /></Grid>
-        <Grid item xs={6} sm={4} md={2}><StatCard title="Incidents" value={metrics?.totalIncidents ?? 0} icon={<ShieldIcon sx={{ color: '#00ff88' }} />} color="#00ff88" subtitle={`${metrics?.mitigatedIncidents ?? 0} mitigated`} /></Grid>
+        <Grid item xs={6} sm={4} md={2}><StatCard title="Exact Replays" value={metrics?.exactReplayAttacks ?? 0} icon={<BugReportIcon sx={{ color: '#ff8c00' }} />} color="#ff8c00" subtitle={`Rule: Nonce/TxID`} /></Grid>
+        <Grid item xs={6} sm={4} md={2}><StatCard title="Adaptive Replays" value={metrics?.adaptiveReplayAttacks ?? 0} icon={<PsychologyIcon sx={{ color: '#8b5cf6' }} />} color="#8b5cf6" subtitle={`AI Behavioral`} /></Grid>
+        <Grid item xs={6} sm={4} md={2}><StatCard title="Traditional Catch" value={metrics?.traditionalDetections ?? 0} icon={<ShieldIcon sx={{ color: '#00ff88' }} />} color="#00ff88" subtitle="Deterministic" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><StatCard title="AI Behavioral Catch" value={metrics?.aiDetections ?? 0} icon={<PsychologyIcon sx={{ color: '#00d4ff' }} />} color="#00d4ff" subtitle="Machine Learning" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><StatCard title="Incidents" value={metrics?.totalIncidents ?? 0} icon={<BlockIcon sx={{ color: '#ff3366' }} />} color="#ff3366" subtitle={`${metrics?.mitigatedIncidents ?? 0} mitigated`} /></Grid>
       </Grid>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>

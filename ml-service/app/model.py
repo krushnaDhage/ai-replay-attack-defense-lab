@@ -21,7 +21,12 @@ FEATURE_ORDER = [
     "sessionChanged",
     "behaviorDeviation",
     "previousRequestCount",
-    "duplicateRequestCount"
+    "duplicateRequestCount",
+    "sessionSequenceDeviation",
+    "transactionFrequency",
+    "sessionDuration",
+    "loginTimeDeviation",
+    "deviceDeviation"
 ]
 
 # Top features to always report (sorted by trained importance)
@@ -82,7 +87,7 @@ class ModelStore:
         confidence = float(max(y_prob))
 
         # Risk score: weighted by class danger
-        danger_weights = {"NORMAL": 0.0, "SUSPICIOUS": 0.5, "REPLAY_ATTACK": 1.0}
+        danger_weights = {"NORMAL": 0.0, "SUSPICIOUS": 0.5, "SUSPICIOUS_BEHAVIOR": 0.8, "REPLAY_ATTACK": 1.0}
         risk_score = sum(
             class_probs.get(cls, 0.0) * danger_weights.get(cls, 0.5) * 100
             for cls in danger_weights
@@ -119,12 +124,18 @@ class ModelStore:
         if features.get("transactionIdReuse", 0) > 0:
             risk += 35; important.append("transactionIdReuse")
         if features.get("requestFrequency", 0) > 10:
-            risk += 15; important.append("requestFrequency")
+            risk += 20; important.append("requestFrequency")
+        if features.get("behaviorDeviation", 0.0) > 0.5:
+            risk += 25; important.append("behaviorDeviation")
+        if features.get("sessionSequenceDeviation", 0.0) > 0.5:
+            risk += 25; important.append("sessionSequenceDeviation")
+        if features.get("requestInterval", 60.0) < 1.0:
+            risk += 20; important.append("requestInterval")
         if features.get("timestampAge", 0) > 300:
             risk += 10; important.append("timestampAge")
         risk = min(risk, 100.0)
-        confidence = risk / 100.0
-        prediction = "REPLAY_ATTACK" if risk > 80 else "SUSPICIOUS" if risk > 40 else "NORMAL"
+        confidence = max(0.5, min(0.98, risk / 100.0))
+        prediction = "REPLAY_ATTACK" if risk > 80 else "SUSPICIOUS_BEHAVIOR" if risk > 40 else "NORMAL"
         return {
             "prediction": prediction,
             "confidence": round(confidence, 4),

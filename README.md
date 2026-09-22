@@ -8,12 +8,14 @@
 
 ## Project Overview
 
-This platform is a complete, working cybersecurity laboratory demonstrating how AI and traditional security mechanisms combine to detect, explain, and automatically respond to **replay attacks** in real time.
+This platform is a complete cybersecurity laboratory demonstrating how traditional security mechanisms and Machine Learning combine to detect, explain, and automatically respond to **replay attacks** in real time.
 
-The system implements the full pipeline:
+The application features **Dual Replay Attack Modes**:
+1. **EXACT REPLAY (Deterministic Duplicate Detection)**: Replaying exact duplicate requests (identical Transaction ID, Nonce, and payload). Blocked deterministically by Tier 1 checks. *Note: AI is not required for basic duplicate detection.*
+2. **ADAPTIVE / BEHAVIORAL REPLAY (Fresh Nonce/TxID Attack Vector)**: Attacker generates a fresh Transaction ID, fresh Nonce, and valid Timestamp to bypass traditional checks (`"NO EXACT REPLAY DETECTED"`). **Behavioral ML** detects rapid inter-request intervals (0.2s), frequency anomalies, and sequence deviations to predict `SUSPICIOUS_BEHAVIOR` or `REPLAY_ATTACK` and trigger automated mitigation.
 
 ```
-ATTACK → OBSERVATION → AI DETECTION → EXPLANATION → DECISION → MITIGATION → VERIFICATION
+ATTACK → OBSERVATION → DUAL-TIER INSPECTION (Rule + ML) → EXPLANATION → DECISION → MITIGATION → VERIFICATION
 ```
 
 ---
@@ -27,8 +29,7 @@ ATTACK → OBSERVATION → AI DETECTION → EXPLANATION → DECISION → MITIGAT
 | Security | Spring Security + JWT (JJWT) | 6.x / 0.12.6 |
 | Database | PostgreSQL | 16 |
 | ML Service | Python FastAPI | 0.141+ |
-| ML Model | scikit-learn Random Forest | 1.9+ |
-| Anomaly Detection | Isolation Forest | (same) |
+| ML Model | scikit-learn Random Forest + Isolation Forest | 1.9+ |
 | Containerization | Docker + Docker Compose | 29.x |
 
 ---
@@ -36,31 +37,31 @@ ATTACK → OBSERVATION → AI DETECTION → EXPLANATION → DECISION → MITIGAT
 ## Architecture
 
 ```
-Browser (React/Vite :5173)
+Browser (React/Vite :3000 / :5173)
          │
          │ Axios + JWT
          ▼
 Spring Boot API (:8080)
          │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-ReplayProtection   Feature Extraction
-    │                    │
-    │              Python FastAPI (:8000)
-    │              Random Forest + Isolation Forest
-    │                    │
-    └──────┬─────────────┘
-           │
-      Risk Engine (0-100)
-           │
-    Response Policy Engine
-           │
-    ┌──────┴──────┐
-  ALLOW         BLOCK
-                 │
-          PostgreSQL (:5432)
-          SecurityIncident
+    ┌────┴────────────────────────────────┐
+    │                                     │
+    ▼                                     ▼
+Tier 1: Deterministic ReplayCheck    Tier 2: Behavioral Feature Extractor (15 features)
+(Nonce & TxID Lookup)                     │
+    │                                Python FastAPI ML Service (:8000)
+    │                                Random Forest (Supervised) + Isolation Forest (Anomaly)
+    │                                     │
+    └──────────────────┬──────────────────┘
+                       │
+                  Risk Engine (0-100)
+                       │
+                Response Policy Engine
+                       │
+                ┌──────┴──────┐
+              ALLOW         BLOCK / THROTTLE
+                             │
+                      PostgreSQL (:5432)
+                      SecurityIncident Audit Record
 ```
 
 ---
@@ -73,114 +74,77 @@ ReplayProtection   Feature Extraction
 - Node 18+
 - Docker + Docker Compose
 
-### Option A: Local Development
-
-```bash
-# 1. Start PostgreSQL via Docker
-docker compose up postgres -d
-
-# 2. Train the ML model
-cd ml-service
-python train.py
-
-# 3. Start ML service
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# 4. Start backend (new terminal)
-cd backend
-mvn spring-boot:run
-
-# 5. Start frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-
-# 6. Open browser
-# http://localhost:5173
-```
-
-### Option B: Full Docker Deploy
+### Quick Docker Deploy
 
 ```bash
 cp .env.example .env
-# Edit .env with your values
 docker compose up --build
-# Open http://localhost:5173
+# Open http://localhost:3000
 ```
 
 ---
 
-## Demo Flow
+## Dual Attack Simulation Modes
 
-1. Register a user → Login
-2. Open **Transaction Simulator** → send a legitimate transaction
-3. Observe: SUCCESS + NORMAL security status + risk score ~5
-4. Open **Attack Simulator**
-5. A transaction is captured automatically
-6. Click **SIMULATE REPLAY ATTACK**
-7. Watch the animated flow: Capture → Gateway → AI Detection
-8. Observe: BLOCKED + REPLAY_ATTACK + risk score ~90+
-9. See the security incident created in **Incidents** page
-10. View **AI Analysis** page — feature importance from the trained model
-11. Send a new legitimate transaction → shows normal traffic still works
+### Mode 1: Exact Duplicate Replay
+- **Attacker Action**: Intercepts request and replays it identically (same Tx ID, same Nonce).
+- **Security Check Result**: Tier 1 Nonce & Tx ID lookup flags duplicate (`409 Conflict`).
+- **Lab Visual Indicator**: *"AI NOT REQUIRED FOR BASIC DUPLICATE DETECTION"*
+
+### Mode 2: Adaptive Behavioral Replay
+- **Attacker Action**: Generates fresh Tx ID (`TX-ADAPTIVE-NEW`), fresh Nonce (`NONCE-FRESH-NEW`), and current Timestamp to bypass simple duplicate filters.
+- **Traditional Check Result**: `"NO EXACT REPLAY DETECTED"` — All Tier 1 checks pass!
+- **Behavioral AI Result**: Tier 2 ML model detects 0.2s inter-request interval, frequency surge, and sequence deviation index 0.85 -> Predicts `SUSPICIOUS_BEHAVIOR`, calculates high risk score (92.5/100), and applies automated mitigation.
 
 ---
 
-## Replay Protection Layers
+## ML Model & 15-Feature Vector
 
-| Layer | Check | How |
-|-------|-------|-----|
-| 1 | Transaction ID reuse | DB lookup |
-| 2 | Nonce reuse | NonceRecord table |
-| 3 | Timestamp freshness | ±5 min window |
-| 4 | Request fingerprint | SHA-256 hash |
-| 5 | ML behavioral model | Random Forest (10 features) |
+- **Algorithms**: Random Forest Classifier (200 trees) + Isolation Forest (Unsupervised Anomaly Detection)
+- **Classes**: `NORMAL` / `SUSPICIOUS` / `SUSPICIOUS_BEHAVIOR` / `REPLAY_ATTACK`
+- **Feature Vector (15 Features)**:
+  1. `requestFrequency` (requests/min)
+  2. `transactionIdReuse` (count)
+  3. `nonceReuse` (count)
+  4. `timestampAge` (seconds)
+  5. `requestInterval` (seconds between requests)
+  6. `ipChanged` (0 or 1)
+  7. `sessionChanged` (0 or 1)
+  8. `behaviorDeviation` (index 0.0 - 1.0)
+  9. `previousRequestCount`
+  10. `duplicateRequestCount`
+  11. `sessionSequenceDeviation` (index 0.0 - 1.0)
+  12. `transactionFrequency` (tx/min)
+  13. `sessionDuration` (seconds)
+  14. `loginTimeDeviation` (seconds)
+  15. `deviceDeviation` (hash delta)
 
----
-
-## ML Model
-
-- **Algorithm**: Random Forest Classifier (200 estimators)
-- **Supplement**: Isolation Forest for anomaly detection
-- **Classes**: `NORMAL` / `SUSPICIOUS` / `REPLAY_ATTACK`
-- **Features**: requestFrequency, transactionIdReuse, nonceReuse, timestampAge, requestInterval, ipChanged, sessionChanged, behaviorDeviation, previousRequestCount, duplicateRequestCount
-- **Training data**: 2000 synthetic samples (clearly documented as synthetic)
-- **Validation**: 5-fold cross-validation
-
-> **DISCLAIMER**: The model is trained on synthetic educational data. Performance metrics reflect the synthetic dataset only and do not represent real-world system effectiveness.
-
----
-
-## Risk Classification
-
-| Score | Severity | Response |
-|-------|----------|----------|
-| 0–30 | NORMAL | Allow request |
-| 31–60 | SUSPICIOUS | Flag & log |
-| 61–80 | HIGH | Reject + alert admin |
-| 81–100 | CRITICAL | Block + invalidate nonce + create incident |
+> **DISCLAIMER**: The model is trained on a synthetic educational dataset (2,200 samples). Performance metrics reflect the synthetic dataset only and do not represent real-world commercial effectiveness.
 
 ---
 
-## API Endpoints
+## Risk Classification & Mitigation Scale
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/register` | Public | Register user |
-| POST | `/api/auth/login` | Public | Login + JWT |
-| POST | `/api/transactions/transfer` | JWT | Replay-protected transaction |
-| GET | `/api/transactions` | JWT | List transactions |
-| POST | `/api/attack-simulator/capture` | JWT | Capture request |
-| POST | `/api/attack-simulator/replay` | JWT | Replay attack (lab only) |
-| GET | `/api/security/incidents` | JWT | List incidents |
-| GET | `/api/security/events` | JWT | Event timeline |
-| GET | `/api/security/dashboard` | JWT | Live metrics |
-| GET | `/api/health` | Public | System health |
-| POST | `/predict` (ML) | ML Service | ML prediction |
-| GET | `/metrics` (ML) | ML Service | Training metrics |
-| GET | `/features` (ML) | ML Service | Feature importance |
+| Score | Severity | Classification | Response Action |
+|-------|----------|----------------|-----------------|
+| 0–30 | NORMAL | `NORMAL` | Allow request |
+| 31–60 | LOW/MEDIUM | `SUSPICIOUS` | Flag & log audit event |
+| 61–80 | HIGH | `SUSPICIOUS_BEHAVIOR` | Throttle account + temporary rate limit |
+| 81–100 | CRITICAL | `REPLAY_ATTACK` | Block request + invalidate nonce + create forensic incident |
 
-**Swagger UI**: http://localhost:8080/swagger-ui.html
+---
+
+## Key API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/transactions/transfer` | Replay-protected financial transaction transfer |
+| POST | `/api/attack-simulator/capture` | Capture request payload for lab replay |
+| POST | `/api/attack-simulator/replay` | Mode 1: Exact Duplicate Replay simulation |
+| POST | `/api/attack-simulator/replay-adaptive` | Mode 2: Adaptive Behavioral Replay simulation |
+| GET | `/api/security/incidents` | Forensic incident audit records |
+| GET | `/api/security/dashboard` | Live metrics (Exact vs Adaptive counts) |
+| GET | `/predict` (ML Service :8000) | Python ML prediction & feature attribution |
 
 ---
 
@@ -191,32 +155,10 @@ docker compose up --build
 cd backend
 mvn test
 
-# ML service tests
+# ML service tests (pytest)
 cd ml-service
 python -m pytest tests/ -v
 ```
-
----
-
-## Database Schema
-
-| Table | Purpose |
-|-------|---------|
-| `users` | User accounts and roles |
-| `transactions` | All processed transactions with security metadata |
-| `nonce_records` | Used nonces (prevents reuse) |
-| `security_events` | Audit trail of all security events |
-| `security_incidents` | Forensic incident records |
-| `attack_simulations` | Captured requests for replay demo |
-
----
-
-## Limitations
-
-- ML trained on **synthetic** data — metrics do not represent real-world accuracy
-- LLM explanation is disabled by default; deterministic rule-based explainer is used
-- This is an educational demonstration, not a production security system
-- Isolation Forest scores are supplementary only
 
 ---
 
@@ -226,29 +168,24 @@ python -m pytest tests/ -v
 replay-attack-defense/
 ├── backend/                   # Spring Boot 3.3 + Java 21
 │   ├── src/main/java/com/replaylab/backend/
-│   │   ├── controller/        # REST controllers
-│   │   ├── service/           # Business logic
-│   │   ├── entity/            # JPA entities
-│   │   ├── repository/        # Spring Data repos
-│   │   ├── security/          # JWT filter + util
-│   │   ├── ml/                # ML client + feature extractor
-│   │   ├── risk/              # Risk engine
-│   │   ├── response/          # Response policy engine
-│   │   └── incident/          # Incident management
+│   │   ├── controller/        # AttackSimulatorController & REST APIs
+│   │   ├── service/           # TransactionService, ExplanationService
+│   │   ├── entity/            # SecurityIncident, Transaction, NonceRecord
+│   │   ├── ml/                # MlFeatures (15 features), FeatureExtractor
+│   │   ├── risk/              # RiskEngine
+│   │   ├── response/          # ResponsePolicyEngine
+│   │   └── incident/          # IncidentService
 │   └── pom.xml
 ├── ml-service/                # Python FastAPI + scikit-learn
-│   ├── app/                   # FastAPI application
-│   ├── data/                  # Dataset generator
-│   ├── model/                 # Saved .joblib models
-│   ├── tests/                 # pytest suite
-│   └── train.py               # Training script
+│   ├── app/                   # FastAPI schemas, model wrappers
+│   ├── data/                  # Synthetic dataset generator (2,200 samples)
+│   ├── model/                 # Joblib model artifacts & JSON metrics
+│   └── train.py               # ML Training pipeline script
 ├── frontend/                  # React + Vite + MUI
 │   └── src/
-│       ├── pages/             # 11 pages
-│       ├── components/        # Layout sidebar
+│       ├── pages/             # AttackSimulator, BeforeAfter, AIAnalysis, Dashboard, etc.
 │       ├── services/          # Axios API client
 │       └── context/           # Auth context
 ├── docker-compose.yml
-├── .env.example
 └── README.md
 ```

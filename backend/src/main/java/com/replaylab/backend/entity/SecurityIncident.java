@@ -27,7 +27,11 @@ public class SecurityIncident {
     private String incidentId;  // INC-2024-0001
 
     @Column(nullable = false, length = 50)
-    private String attackType;  // REPLAY_ATTACK
+    private String attackType;  // EXACT_REPLAY, ADAPTIVE_REPLAY, etc.
+
+    @Column(length = 50)
+    @Builder.Default
+    private String detectionMethod = "TRADITIONAL"; // TRADITIONAL, BEHAVIORAL_AI, HYBRID
 
     @Column(nullable = false, length = 20)
     private String severity;    // CRITICAL

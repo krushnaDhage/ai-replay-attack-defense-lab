@@ -197,4 +197,14 @@ class ReplayAttackDefenseApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
     }
+
+    @Test
+    @Order(11)
+    void testAdaptiveReplayAttackSimulation() throws Exception {
+        mockMvc.perform(post("/api/attack-simulator/replay-adaptive")
+                .header("Authorization", "Bearer " + jwt))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value("BLOCKED"))
+                .andExpect(jsonPath("$.isReplay").value(false));
+    }
 }

@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * Feature vector sent to the Python ML service.
- * All features are numeric for Random Forest compatibility.
+ * Supports both traditional replay flags and behavioral anomaly features.
  */
 public record MlFeatures(
     double requestFrequency,
@@ -17,8 +17,30 @@ public record MlFeatures(
     int sessionChanged,
     double behaviorDeviation,
     long previousRequestCount,
-    long duplicateRequestCount
+    long duplicateRequestCount,
+    double sessionSequenceDeviation,
+    double transactionFrequency,
+    double sessionDuration,
+    double loginTimeDeviation,
+    int deviceDeviation
 ) {
+    public MlFeatures(
+        double requestFrequency,
+        int transactionIdReuse,
+        int nonceReuse,
+        long timestampAge,
+        double requestInterval,
+        int ipChanged,
+        int sessionChanged,
+        double behaviorDeviation,
+        long previousRequestCount,
+        long duplicateRequestCount
+    ) {
+        this(requestFrequency, transactionIdReuse, nonceReuse, timestampAge, requestInterval,
+             ipChanged, sessionChanged, behaviorDeviation, previousRequestCount, duplicateRequestCount,
+             0.0, 0.0, 60.0, 0.0, 0);
+    }
+
     public Map<String, Object> toMap() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("requestFrequency", requestFrequency);
@@ -31,6 +53,11 @@ public record MlFeatures(
         map.put("behaviorDeviation", behaviorDeviation);
         map.put("previousRequestCount", previousRequestCount);
         map.put("duplicateRequestCount", duplicateRequestCount);
+        map.put("sessionSequenceDeviation", sessionSequenceDeviation);
+        map.put("transactionFrequency", transactionFrequency);
+        map.put("sessionDuration", sessionDuration);
+        map.put("loginTimeDeviation", loginTimeDeviation);
+        map.put("deviceDeviation", deviceDeviation);
         return map;
     }
 }

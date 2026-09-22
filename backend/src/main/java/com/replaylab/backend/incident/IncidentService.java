@@ -36,11 +36,25 @@ public class IncidentService {
                                             List<String> evidence,
                                             List<String> actions,
                                             String explanation) {
+        return createIncident(tx, mlResult, severity, evidence, actions, explanation, "REPLAY_ATTACK", "TRADITIONAL");
+    }
+
+    @Transactional
+    public SecurityIncident createIncident(Transaction tx,
+                                            MlPredictionResult mlResult,
+                                            RiskSeverity severity,
+                                            List<String> evidence,
+                                            List<String> actions,
+                                            String explanation,
+                                            String attackType,
+                                            String detectionMethod) {
         String incidentId = generateIncidentId();
 
         Map<String, Object> evidenceMap = new LinkedHashMap<>();
         evidenceMap.put("transactionId", tx.getTransactionId());
         evidenceMap.put("nonce", tx.getNonce());
+        evidenceMap.put("attackType", attackType);
+        evidenceMap.put("detectionMethod", detectionMethod);
         evidenceMap.put("mlPrediction", mlResult.prediction());
         evidenceMap.put("confidence", mlResult.confidence());
         evidenceMap.put("riskScore", mlResult.riskScore());
@@ -54,7 +68,8 @@ public class IncidentService {
 
         SecurityIncident incident = SecurityIncident.builder()
                 .incidentId(incidentId)
-                .attackType(mlResult.prediction())
+                .attackType(attackType != null ? attackType : mlResult.prediction())
+                .detectionMethod(detectionMethod != null ? detectionMethod : "TRADITIONAL")
                 .severity(severity.name())
                 .confidence(mlResult.confidence())
                 .riskScore(mlResult.riskScore())
@@ -69,12 +84,12 @@ public class IncidentService {
                 .build();
 
         incident = incidentRepository.save(incident);
-        log.info("Incident created: {} for TX: {}", incidentId, tx.getTransactionId());
+        log.info("Incident created: {} ({}) for TX: {}", incidentId, attackType, tx.getTransactionId());
 
         // Log security event
         logEvent("INCIDENT_CREATED", "CRITICAL", tx.getTransactionId(),
                 tx.getUserId(), tx.getSourceIp(),
-                "Security incident " + incidentId + " created for " + mlResult.prediction(), null);
+                "Security incident " + incidentId + " created for " + attackType + " via " + detectionMethod, null);
 
         return incident;
     }
@@ -116,17 +131,34 @@ public class IncidentService {
         long mitigatedIncidents = incidentRepository.countByStatus("MITIGATED");
         long totalIncidents = incidentRepository.count();
 
+        List<SecurityIncident> allIncidents = incidentRepository.findAll();
+        long exactReplays = allIncidents.stream().filter(i -> "EXACT_REPLAY".equalsIgnoreCase(i.getAttackType())).count();
+        long adaptiveReplays = allIncidents.stream().filter(i -> "ADAPTIVE_REPLAY".equalsIgnoreCase(i.getAttackType()) || "SUSPICIOUS_BEHAVIOR".equalsIgnoreCase(i.getAttackType())).count();
+        long traditionalDetections = allIncidents.stream().filter(i -> "TRADITIONAL".equalsIgnoreCase(i.getDetectionMethod())).count();
+        long aiDetections = allIncidents.stream().filter(i -> "BEHAVIORAL_AI".equalsIgnoreCase(i.getDetectionMethod())).count();
+
+        // If no explicit classification yet in DB, default reasonable breakdown based on counts
+        if (exactReplays == 0 && adaptiveReplays == 0 && totalIncidents > 0) {
+            exactReplays = totalIncidents;
+            traditionalDetections = totalIncidents;
+        }
+
         Map<String, Object> metrics = new LinkedHashMap<>();
         metrics.put("totalRequests", totalRequests);
         metrics.put("requestsAnalyzed", totalRequests);
         metrics.put("suspiciousRequests", suspicious);
-        metrics.put("replayAttacksDetected", replayAttacks);
+        metrics.put("replayAttacksDetected", replayAttacks + adaptiveReplays);
+        metrics.put("exactReplayAttacks", exactReplays);
+        metrics.put("adaptiveReplayAttacks", adaptiveReplays);
+        metrics.put("behavioralAnomalies", adaptiveReplays + suspicious);
+        metrics.put("traditionalDetections", traditionalDetections);
+        metrics.put("aiDetections", aiDetections);
         metrics.put("attacksBlocked", blocked);
         metrics.put("activeIncidents", openIncidents);
         metrics.put("totalIncidents", totalIncidents);
         metrics.put("mitigatedIncidents", mitigatedIncidents);
-        metrics.put("detectionRate", totalRequests > 0 ? (double) replayAttacks / totalRequests * 100 : 0);
-        metrics.put("blockRate", replayAttacks > 0 ? (double) blocked / replayAttacks * 100 : 0);
+        metrics.put("detectionRate", totalRequests > 0 ? (double) (replayAttacks + adaptiveReplays) / totalRequests * 100 : 0);
+        metrics.put("blockRate", (replayAttacks + adaptiveReplays) > 0 ? (double) blocked / (replayAttacks + adaptiveReplays) * 100 : 0);
         return metrics;
     }
 

@@ -121,6 +121,55 @@ public class AttackSimulatorController {
         return ResponseEntity.status(response.getStatus().equals("BLOCKED") ? 409 : 200).body(response);
     }
 
+    /**
+     * Simulates an adaptive/behavioral replay attack.
+     * Generates a request with a FRESH transaction ID, FRESH nonce, and FRESH timestamp,
+     * but executes an abnormal burst behavioral pattern so traditional checks pass while AI flags it.
+     */
+    @PostMapping("/replay-adaptive")
+    @Operation(summary = "Simulate an adaptive/behavioral replay attack with fresh nonce & fresh transaction ID")
+    public ResponseEntity<TransactionResponse> replayAdaptiveRequest(
+            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpRequest) {
+
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        AttackSimulation simulation = simulationRepository
+                .findFirstByUserIdOrderByCapturedAtDesc(user.getId())
+                .orElse(null);
+
+        // Generate fresh tokens/identifiers (bypassing traditional exact replay checks)
+        String freshTxId = "TX-ADAPTIVE-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String freshNonce = "N-ADAPTIVE-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        TransactionRequest adaptiveRequest = new TransactionRequest();
+        adaptiveRequest.setTransactionId(freshTxId);
+        adaptiveRequest.setSenderAccount(simulation != null ? simulation.getSenderAccount() : "A001");
+        adaptiveRequest.setReceiverAccount(simulation != null ? simulation.getReceiverAccount() : "A002");
+        adaptiveRequest.setAmount(simulation != null ? simulation.getAmount() : new java.math.BigDecimal("1000.00"));
+        adaptiveRequest.setNonce(freshNonce);
+        adaptiveRequest.setTimestamp(Instant.now()); // FRESH timestamp!
+
+        String sourceIp = getClientIp(httpRequest);
+        String sessionId = httpRequest.getSession(true).getId();
+
+        log.warn("ATTACK SIMULATION: Launching ADAPTIVE BEHAVIORAL REPLAY for user {} with fresh txId {}",
+            userDetails.getUsername(), freshTxId);
+
+        TransactionResponse response = transactionService.processAdaptiveTransaction(
+            adaptiveRequest, userDetails.getUsername(), sourceIp, sessionId);
+
+        if (simulation != null) {
+            simulation.setReplayed(true);
+            simulation.setReplayedAt(Instant.now());
+            simulation.setReplayResult("ADAPTIVE_" + response.getStatus());
+            simulationRepository.save(simulation);
+        }
+
+        return ResponseEntity.status("BLOCKED".equals(response.getStatus()) ? 409 : 200).body(response);
+    }
+
     @GetMapping("/simulations")
     @Operation(summary = "Get all attack simulations for current user")
     public ResponseEntity<List<AttackSimulation>> getSimulations(

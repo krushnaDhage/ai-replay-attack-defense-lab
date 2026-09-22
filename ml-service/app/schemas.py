@@ -12,6 +12,11 @@ class FeaturesInput(BaseModel):
     behaviorDeviation: float = 0.0
     previousRequestCount: int = 0
     duplicateRequestCount: int = 0
+    sessionSequenceDeviation: float = 0.0
+    transactionFrequency: float = 0.0
+    sessionDuration: float = 60.0
+    loginTimeDeviation: float = 0.0
+    deviceDeviation: int = 0
 
 class PredictRequest(BaseModel):
     features: FeaturesInput
