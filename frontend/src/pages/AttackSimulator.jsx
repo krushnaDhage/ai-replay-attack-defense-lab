@@ -112,16 +112,22 @@ export default function AttackSimulator() {
         : await simulatorAPI.replayAdaptive()
       setReplayResult(res.data)
     } catch (err) {
-      if (err.response?.data?.status === 'BLOCKED' || err.response?.data?.securityStatus === 'REPLAY_ATTACK') {
-        setReplayResult(err.response.data)
+      const errData = err.response?.data
+      const isBlockedResponse =
+        errData?.status === 'BLOCKED' ||
+        errData?.securityStatus === 'REPLAY_ATTACK' ||
+        errData?.securityStatus === 'SUSPICIOUS_BEHAVIOR' ||
+        err.response?.status === 409
+      if (isBlockedResponse && errData) {
+        setReplayResult(errData)
       } else {
-        setError(err.response?.data?.message || 'Replay simulation failed')
+        setError(errData?.message || err.message || 'Replay simulation failed')
       }
     }
     setStep('done')
   }
 
-  const isBlocked = replayResult?.status === 'BLOCKED' || replayResult?.securityStatus === 'REPLAY_ATTACK' || replayResult?.securityStatus === 'SUSPICIOUS_BEHAVIOR'
+  const isBlocked = replayResult?.status === 'BLOCKED' || replayResult?.status === 'SUCCESS_FLAGGED' || replayResult?.securityStatus === 'REPLAY_ATTACK' || replayResult?.securityStatus === 'SUSPICIOUS_BEHAVIOR'
 
   return (
     <Box sx={{ animation: 'slide-in 0.4s ease-out' }}>
