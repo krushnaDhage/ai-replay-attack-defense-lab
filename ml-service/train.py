@@ -43,7 +43,12 @@ FEATURE_COLUMNS = [
     "sessionChanged",
     "behaviorDeviation",
     "previousRequestCount",
-    "duplicateRequestCount"
+    "duplicateRequestCount",
+    "sessionSequenceDeviation",
+    "transactionFrequency",
+    "sessionDuration",
+    "loginTimeDeviation",
+    "deviceDeviation"
 ]
 
 def train():

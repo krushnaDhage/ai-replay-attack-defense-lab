@@ -1,12 +1,17 @@
 {
-  "requestFrequency": 0.1936392076186798,
-  "timestampAge": 0.17763952057392984,
-  "behaviorDeviation": 0.16389594695426704,
-  "requestInterval": 0.1631071445790106,
-  "previousRequestCount": 0.09442726143492314,
-  "duplicateRequestCount": 0.08076091522649444,
-  "transactionIdReuse": 0.06519111187673118,
-  "nonceReuse": 0.05926052934051627,
-  "sessionChanged": 0.0013809600798080554,
-  "ipChanged": 0.000697402315639661
+  "timestampAge": 0.12737025846283348,
+  "requestFrequency": 0.11349780642236591,
+  "sessionSequenceDeviation": 0.1072876126144118,
+  "requestInterval": 0.09728933048100824,
+  "behaviorDeviation": 0.09319247217229151,
+  "loginTimeDeviation": 0.08790202251298068,
+  "sessionDuration": 0.07835897820105359,
+  "transactionIdReuse": 0.06304000728004434,
+  "duplicateRequestCount": 0.06180107547491951,
+  "nonceReuse": 0.05995952678535125,
+  "previousRequestCount": 0.05429970326800524,
+  "transactionFrequency": 0.05409748255512598,
+  "sessionChanged": 0.000960790151891276,
+  "deviceDeviation": 0.000942933617717119,
+  "ipChanged": 0.0
 }
