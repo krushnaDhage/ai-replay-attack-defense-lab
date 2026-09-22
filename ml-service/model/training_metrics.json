@@ -1,0 +1,41 @@
+{
+  "disclaimer": "Metrics calculated on SYNTHETIC educational dataset only",
+  "dataset_size": 2000,
+  "train_size": 1600,
+  "test_size": 400,
+  "classes": [
+    "NORMAL",
+    "REPLAY_ATTACK",
+    "SUSPICIOUS"
+  ],
+  "accuracy": 1.0,
+  "precision_weighted": 1.0,
+  "recall_weighted": 1.0,
+  "f1_weighted": 1.0,
+  "cv_f1_mean": 1.0,
+  "cv_f1_std": 0.0,
+  "feature_importance": {
+    "requestFrequency": 0.24438829904458254,
+    "behaviorDeviation": 0.19848715261106428,
+    "requestInterval": 0.19660019354176916,
+    "timestampAge": 0.19302291765294657,
+    "previousRequestCount": 0.1101631565015454,
+    "duplicateRequestCount": 0.02549022974079783,
+    "nonceReuse": 0.024625971185098672,
+    "transactionIdReuse": 0.006936751150599935,
+    "ipChanged": 0.0002853285715956005,
+    "sessionChanged": 0.0
+  },
+  "features_used": [
+    "requestFrequency",
+    "transactionIdReuse",
+    "nonceReuse",
+    "timestampAge",
+    "requestInterval",
+    "ipChanged",
+    "sessionChanged",
+    "behaviorDeviation",
+    "previousRequestCount",
+    "duplicateRequestCount"
+  ]
+}

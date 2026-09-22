@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: replay-attack-defense
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/replaylab}
+    username: ${DB_USERNAME:replaylab}
+    password: ${DB_PASSWORD:replaylab123}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ThisIsAVeryLongSecretKeyForJWTGenerationInReplayLabProject2024XYZ}
+    expiration-ms: ${JWT_EXPIRY_MS:86400000}
+  ml-service:
+    url: ${ML_SERVICE_URL:http://localhost:8000}
+  replay:
+    freshness-window-seconds: ${REPLAY_FRESHNESS_WINDOW:300}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+logging:
+  level:
+    com.replaylab: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method

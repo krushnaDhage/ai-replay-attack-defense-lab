@@ -1,0 +1,12 @@
+{
+  "requestFrequency": 0.24438829904458254,
+  "behaviorDeviation": 0.19848715261106428,
+  "requestInterval": 0.19660019354176916,
+  "timestampAge": 0.19302291765294657,
+  "previousRequestCount": 0.1101631565015454,
+  "duplicateRequestCount": 0.02549022974079783,
+  "nonceReuse": 0.024625971185098672,
+  "transactionIdReuse": 0.006936751150599935,
+  "ipChanged": 0.0002853285715956005,
+  "sessionChanged": 0.0
+}

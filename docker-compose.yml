@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: replaylab-postgres
+    environment:
+      POSTGRES_DB: replaylab
+      POSTGRES_USER: ${DB_USERNAME:-replaylab}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-replaylab123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U replaylab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - replaylab-net
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: replaylab-ml
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml-service/model:/app/model
+    networks:
+      - replaylab-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: replaylab-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/replaylab
+      DB_USERNAME: ${DB_USERNAME:-replaylab}
+      DB_PASSWORD: ${DB_PASSWORD:-replaylab123}
+      JWT_SECRET: ${JWT_SECRET:-ThisIsAVeryLongSecretKeyForJWTGenerationInReplayLabProject2024XYZ}
+      ML_SERVICE_URL: http://ml-service:8000
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://frontend:80
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    networks:
+      - replaylab-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: replaylab-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - replaylab-net
+
+volumes:
+  postgres_data:
+
+networks:
+  replaylab-net:
+    driver: bridge
